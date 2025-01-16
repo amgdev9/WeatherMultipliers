@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>/home/amg/.config/r2modmanPlus-local/LethalCompany/profiles/Mods modantes/BepInEx/core/BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="Harmony">
+      <HintPath>/home/amg/.config/r2modmanPlus-local/LethalCompany/profiles/Mods modantes/BepInEx/core/0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>/home/amg/.local/share/Steam/steamapps/common/Lethal Company/Lethal Company_Data/Managed/UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngineCoreModule">
+      <HintPath>/home/amg/.local/share/Steam/steamapps/common/Lethal Company/Lethal Company_Data/Managed/UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityCollections">
+      <HintPath>/home/amg/.local/share/Steam/steamapps/common/Lethal Company/Lethal Company_Data/Managed/Unity.Collections.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityNetcode">
+      <HintPath>/home/amg/.local/share/Steam/steamapps/common/Lethal Company/Lethal Company_Data/Managed/Unity.Netcode.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="AssemblyCsharp">
+      <HintPath>/home/amg/.local/share/Steam/steamapps/common/Lethal Company/Lethal Company_Data/Managed/Assembly-CSharp.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+ </Project>

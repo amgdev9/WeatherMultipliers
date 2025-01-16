@@ -3,75 +3,77 @@ using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using Unity.Netcode;
 
-namespace WeatherMultipliers;
-
-[Serializable]
-public class SyncedInstance<T>
+namespace WeatherMultipliers
 {
-    internal static CustomMessagingManager MessageManager => NetworkManager.Singleton.CustomMessagingManager;
-    internal static bool IsClient => NetworkManager.Singleton.IsClient;
-    internal static bool IsHost => NetworkManager.Singleton.IsHost;
 
-    [NonSerialized]
-    protected static int IntSize = 4;
-
-    public static T Default { get; private set; }
-    public static T Instance { get; private set; }
-
-    public static bool Synced { get; internal set; }
-
-    protected void InitInstance(T instance)
+    [Serializable]
+    public class SyncedInstance<T>
     {
-        Default = instance;
-        Instance = instance;
+        internal static CustomMessagingManager MessageManager => NetworkManager.Singleton.CustomMessagingManager;
+        internal static bool IsClient => NetworkManager.Singleton.IsClient;
+        internal static bool IsHost => NetworkManager.Singleton.IsHost;
 
-        // Makes sure the size of an integer is correct for the current system.
-        // We use 4 by default as that's the size of an int on 32 and 64 bit systems.
-        IntSize = sizeof(int);
-    }
+        [NonSerialized]
+        protected static int IntSize = 4;
 
-    internal static void SyncInstance(byte[] data)
-    {
-        Instance = DeserializeFromBytes(data);
-        Synced = true;
-    }
+        public static T Default { get; private set; }
+        public static T Instance { get; private set; }
 
-    internal static void RevertSync()
-    {
-        Instance = Default;
-        Synced = false;
-    }
+        public static bool Synced { get; internal set; }
 
-    public static byte[] SerializeToBytes(T val)
-    {
-        BinaryFormatter bf = new();
-        using MemoryStream stream = new();
-
-        try
+        protected void InitInstance(T instance)
         {
-            bf.Serialize(stream, val);
-            return stream.ToArray();
+            Default = instance;
+            Instance = instance;
+
+            // Makes sure the size of an integer is correct for the current system.
+            // We use 4 by default as that's the size of an int on 32 and 64 bit systems.
+            IntSize = sizeof(int);
         }
-        catch (Exception e)
-        {
-            Plugin.Logger.LogError($"Error serializing instance: {e}");
-            return null;
-        }
-    }
 
-    public static T DeserializeFromBytes(byte[] data)
-    {
-        BinaryFormatter bf = new();
-        using MemoryStream stream = new(data);
-
-        try
+        internal static void SyncInstance(byte[] data)
         {
-            return (T)bf.Deserialize(stream);
+            Instance = DeserializeFromBytes(data);
+            Synced = true;
         }
-        catch (Exception e)
+
+        internal static void RevertSync()
         {
-            Plugin.Logger.LogError($"Error deserializing instance: {e}");
-            return default;
+            Instance = Default;
+            Synced = false;
+        }
+
+        public static byte[] SerializeToBytes(T val)
+        {
+            BinaryFormatter bf = new BinaryFormatter();
+            using MemoryStream stream = new MemoryStream();
+
+            try
+            {
+                bf.Serialize(stream, val);
+                return stream.ToArray();
+            }
+            catch (Exception e)
+            {
+                Plugin.Logger.LogError($"Error serializing instance: {e}");
+                return null;
+            }
+        }
+
+        public static T DeserializeFromBytes(byte[] data)
+        {
+            BinaryFormatter bf = new BinaryFormatter();
+            using MemoryStream stream = new MemoryStream(data);
+
+            try
+            {
+                return (T)bf.Deserialize(stream);
+            }
+            catch (Exception e)
+            {
+                Plugin.Logger.LogError($"Error deserializing instance: {e}");
+                return default;
+            }
         }
     }
 }

@@ -7,16 +7,17 @@ using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
-namespace WeatherMultipliers;
-
-[Serializable]
-public class Config : SyncedInstance<Config>
+namespace WeatherMultipliers
 {
-    // Based off https://gist.github.com/Owen3H/c73e09314ed71b254256cbb15fd8c51e
 
-    public Dictionary<LevelWeatherType, float> ValueMultipliers = new();
+    [Serializable]
+    public class Config : SyncedInstance<Config>
+    {
+        // Based off https://gist.github.com/Owen3H/c73e09314ed71b254256cbb15fd8c51e
 
-    private static readonly Dictionary<LevelWeatherType, float> defaultValueMultipliers = new() {
+        public Dictionary<LevelWeatherType, float> ValueMultipliers = new Dictionary<LevelWeatherType, float>();
+
+        private static readonly Dictionary<LevelWeatherType, float> defaultValueMultipliers = new Dictionary<LevelWeatherType, float>() {
                 {LevelWeatherType.Rainy, 1.05f},
                 {LevelWeatherType.Stormy, 1.20f},
                 {LevelWeatherType.Foggy, 1.15f},
@@ -24,99 +25,100 @@ public class Config : SyncedInstance<Config>
                 {LevelWeatherType.Eclipsed, 1.50f},
             };
 
-    public Config(ConfigFile cfg)
-    {
-        InitInstance(this);
-        foreach (KeyValuePair<LevelWeatherType, float> entry in defaultValueMultipliers)
+        public Config(ConfigFile cfg)
         {
-            ValueMultipliers[entry.Key] = cfg.Bind(
-                "Multipliers",
-                entry.Key.ToString(),
-                Mathf.Clamp(entry.Value, 1, 1000),
-                $"Scrap value multiplier for {entry.Key} weather"
-                ).Value;
-        }
-    }
-
-    public static void RequestSync()
-    {
-        if (!IsClient) return;
-        Plugin.Logger.LogInfo($"Attempting to sync config with host");
-        using FastBufferWriter stream = new(IntSize, Allocator.Temp);
-        MessageManager.SendNamedMessage($"{PluginInfo.PLUGIN_GUID}_OnRequestConfigSync", 0uL, stream);
-    }
-
-    public static void OnRequestSync(ulong clientId, FastBufferReader _)
-    {
-        if (!IsHost)
-        {
-            return;
+            InitInstance(this);
+            foreach (KeyValuePair<LevelWeatherType, float> entry in defaultValueMultipliers)
+            {
+                ValueMultipliers[entry.Key] = cfg.Bind(
+                    "Multipliers",
+                    entry.Key.ToString(),
+                    Mathf.Clamp(entry.Value, 1, 1000),
+                    $"Scrap value multiplier for {entry.Key} weather"
+                    ).Value;
+            }
         }
 
-        Plugin.Logger.LogInfo($"Config sync request received from client: {clientId}");
-
-        byte[] array = SerializeToBytes(Instance);
-        int value = array.Length;
-
-        using FastBufferWriter stream = new(value + IntSize, Allocator.Temp);
-
-        try
+        public static void RequestSync()
         {
-            stream.WriteValueSafe(in value, default);
-            stream.WriteBytesSafe(array);
-
-            MessageManager.SendNamedMessage($"{PluginInfo.PLUGIN_GUID}_OnReceiveConfigSync", clientId, stream, NetworkDelivery.ReliableFragmentedSequenced);
-        }
-        catch (Exception e)
-        {
-            Plugin.Logger.LogError($"Error occurred syncing config with client: {clientId}\n{e}");
-        }
-    }
-
-    public static void OnReceiveSync(ulong _, FastBufferReader reader)
-    {
-        if (!reader.TryBeginRead(IntSize))
-        {
-            Plugin.Logger.LogError("Config sync error: Could not begin reading buffer.");
-            return;
+            if (!IsClient) return;
+            Plugin.Logger.LogInfo($"Attempting to sync config with host");
+            using FastBufferWriter stream = new FastBufferWriter(IntSize, Allocator.Temp);
+            MessageManager.SendNamedMessage($"{PluginInfo.PLUGIN_GUID}_OnRequestConfigSync", 0uL, stream);
         }
 
-        reader.ReadValueSafe(out int val, default);
-        if (!reader.TryBeginRead(val))
+        public static void OnRequestSync(ulong clientId, FastBufferReader _)
         {
-            Plugin.Logger.LogError("Config sync error: Host could not sync.");
-            return;
+            if (!IsHost)
+            {
+                return;
+            }
+
+            Plugin.Logger.LogInfo($"Config sync request received from client: {clientId}");
+
+            byte[] array = SerializeToBytes(Instance);
+            int value = array.Length;
+
+            using FastBufferWriter stream = new FastBufferWriter(value + IntSize, Allocator.Temp);
+
+            try
+            {
+                stream.WriteValueSafe(in value, default);
+                stream.WriteBytesSafe(array);
+
+                MessageManager.SendNamedMessage($"{PluginInfo.PLUGIN_GUID}_OnReceiveConfigSync", clientId, stream, NetworkDelivery.ReliableFragmentedSequenced);
+            }
+            catch (Exception e)
+            {
+                Plugin.Logger.LogError($"Error occurred syncing config with client: {clientId}\n{e}");
+            }
         }
 
-        byte[] data = new byte[val];
-        reader.ReadBytesSafe(ref data, val);
-
-        SyncInstance(data);
-
-        Plugin.Logger.LogInfo("Successfully synced config with host.");
-    }
-
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
-    public static void InitializeLocalPlayer()
-    {
-        if (IsHost)
+        public static void OnReceiveSync(ulong _, FastBufferReader reader)
         {
-            MessageManager.RegisterNamedMessageHandler($"{PluginInfo.PLUGIN_GUID}_OnRequestConfigSync", OnRequestSync);
-            Synced = true;
+            if (!reader.TryBeginRead(IntSize))
+            {
+                Plugin.Logger.LogError("Config sync error: Could not begin reading buffer.");
+                return;
+            }
 
-            return;
+            reader.ReadValueSafe(out int val, default);
+            if (!reader.TryBeginRead(val))
+            {
+                Plugin.Logger.LogError("Config sync error: Host could not sync.");
+                return;
+            }
+
+            byte[] data = new byte[val];
+            reader.ReadBytesSafe(ref data, val);
+
+            SyncInstance(data);
+
+            Plugin.Logger.LogInfo("Successfully synced config with host.");
         }
 
-        Synced = false;
-        MessageManager.RegisterNamedMessageHandler($"{PluginInfo.PLUGIN_GUID}_OnReceiveConfigSync", OnReceiveSync);
-        RequestSync();
-    }
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(PlayerControllerB), "ConnectClientToPlayerObject")]
+        public static void InitializeLocalPlayer()
+        {
+            if (IsHost)
+            {
+                MessageManager.RegisterNamedMessageHandler($"{PluginInfo.PLUGIN_GUID}_OnRequestConfigSync", OnRequestSync);
+                Synced = true;
 
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(GameNetworkManager), "StartDisconnect")]
-    public static void PlayerLeave()
-    {
-        RevertSync();
+                return;
+            }
+
+            Synced = false;
+            MessageManager.RegisterNamedMessageHandler($"{PluginInfo.PLUGIN_GUID}_OnReceiveConfigSync", OnReceiveSync);
+            RequestSync();
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(GameNetworkManager), "StartDisconnect")]
+        public static void PlayerLeave()
+        {
+            RevertSync();
+        }
     }
 }
