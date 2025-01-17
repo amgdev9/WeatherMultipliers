@@ -23,6 +23,7 @@ namespace WeatherMultipliers
                 {LevelWeatherType.Foggy, 1.15f},
                 {LevelWeatherType.Flooded, 1.25f},
                 {LevelWeatherType.Eclipsed, 1.50f},
+                {LevelWeatherType.DustClouds, 1.10f},
             };
 
         public Config(ConfigFile cfg)
